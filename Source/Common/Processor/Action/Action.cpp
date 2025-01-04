@@ -150,7 +150,8 @@ void Action::forceCheck(bool triggerIfChanged)
 void Action::triggerConsequences(bool triggerTrue, int multiplexIndex)
 {
 	if (!enabled->boolValue() || forceDisabled) return;
-
+	if (isClearing) return;
+	
 	if (!forceChecking)
 	{
 		if (triggerTrue) csmOn->triggerAll(multiplexIndex);
@@ -160,9 +161,9 @@ void Action::triggerConsequences(bool triggerTrue, int multiplexIndex)
 	}
 }
 
-var Action::getJSONData()
+var Action::getJSONData(bool includeNonOverriden)
 {
-	var data = Processor::getJSONData();
+	var data = Processor::getJSONData(includeNonOverriden);
 	if (cdm != nullptr) data.getDynamicObject()->setProperty("conditions", cdm->getJSONData());
 	data.getDynamicObject()->setProperty("consequences", csmOn->getJSONData());
 	if (hasOffConsequences) data.getDynamicObject()->setProperty("consequencesOff", csmOff->getJSONData());
@@ -239,6 +240,7 @@ void Action::notifyActionTriggered(bool triggerTrue, int multiplexIndex)
 void Action::conditionManagerValidationChanged(ConditionManager*, int multiplexIndex, bool dispatchOnChangeOnly)
 {
 	if (forceChecking) return;
+	if (isClearing) return;
 
 	if (autoTriggerWhenAllConditionAreActives)
 	{
