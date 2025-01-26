@@ -67,7 +67,7 @@ void ConsequenceManager::triggerAll(int multiplexIndex)
 		}
 		else
 		{
-			if (ConsequenceStaggerLauncher::getInstanceWithoutCreating() != nullptr) ConsequenceStaggerLauncher::getInstance()->addLaunch(this, multiplexIndex);
+			if (!isClearing && !Engine::mainEngine->isClearing) ConsequenceStaggerLauncher::getInstance()->addLaunch(this, multiplexIndex);
 		}
 	}
 }
@@ -186,20 +186,20 @@ void ConsequenceStaggerLauncher::run()
 
 	while (!threadShouldExit())
 	{
-
 		{
 			GenericScopedLock lock(launches.getLock());
+
+			for (auto& l : toRemove) launches.removeObject(l);
+			toRemove.clear();
+
+			for (auto& l : toAdd) launches.add(l);
+			toAdd.clear();
+
 			for (auto& l : launches)
 			{
 				processLaunch(l);
-				if (l->isFinished()) toRemove.add(l);
+				if (l->isFinished()) toRemove.addIfNotAlreadyThere(l);
 			}
-		}
-
-		{
-			GenericScopedLock lock(toRemove.getLock());
-			for (auto& l : toRemove) launches.removeObject(l);
-			toRemove.clear();
 		}
 
 		if (launches.isEmpty()) break;
@@ -207,6 +207,8 @@ void ConsequenceStaggerLauncher::run()
 		wait(10);
 	}
 
+
+	for (auto& l : toAdd) delete l; //clean up unprocessed launches
 }
 
 void ConsequenceStaggerLauncher::processLaunch(Launch* l)
@@ -254,14 +256,14 @@ void ConsequenceStaggerLauncher::addLaunch(ConsequenceManager* csm, int multiple
 {
 	if (Engine::mainEngine->isClearing) return;
 
-	launches.add(new Launch(csm, multiplexIndex));
+	toAdd.add(new Launch(csm, multiplexIndex));
 	if (!isThreadRunning()) startThread();
 	else notify();
 }
 
 void ConsequenceStaggerLauncher::removeLaunchesFor(ConsequenceManager* manager, int multiplexIndex)
 {
-	GenericScopedLock lock(toRemove.getLock());
+	GenericScopedLock lock(launches.getLock());
 	for (auto& l : launches)
 	{
 		if (l->manager == manager && (multiplexIndex == -1 || l->multiplexIndex == multiplexIndex)) toRemove.add(l);
