@@ -14,7 +14,7 @@
 
 ActionUI::ActionUI(Action* _action, bool showMiniModeBT) :
 	ProcessorUI(_action, showMiniModeBT),
-	UITimerTarget(ORGANICUI_SLOW_TIMER),
+	UITimerTarget(ORGANICUI_SLOW_TIMER, "ActionUI"),
 	action(_action)
 {
 	acceptedDropTypes.add("Module");
